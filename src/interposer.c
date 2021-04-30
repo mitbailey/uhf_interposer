@@ -12,6 +12,7 @@
 #include <linux/module.h>
 #include <linux/fs.h>
 #include <linux/uaccess.h>
+#include <asm/uaccess.h>
 #include "include/interposer.h"
 
 static int device_file_major_number = 0;
@@ -54,30 +55,65 @@ void unregister_device(void){
     printk(KERN_WARN "uhf_interposer: this device could not be unregistered because it was not registered.\n");
 }
 
-ssize_t device_file_read(struct file *filep, char *buffer, size_t len, loff_t *offset){
+ssize_t ipsr_read(struct file *file, char __user *userBuffer, size_t size, loff_t *offset){
     printk(KERN_NOTICE "uhf_interposer: device file is being read at offset %i, read bytes count = %u\n", (int)*position, (unsigned int) count);
+    
+    struct uhf_device_data *data = (struct uhf_device_data*) file->private_data;
+    
+    ssize_t len = min(data->size - *offset, size);
 
-    // Check if the position has moved beyond the end of the file.
-    if(*position >= test_string_size){
+    if (len <= 0){
         return 0;
     }
 
-    // If more is requested that available, send all available.
-    if(*position + count > test_string_size){
-        count = test_string_size - *position;
-    }
-
-    if(copy_to_user(user_buffer, test_string + *position, count) != 0){
+    if(copy_to_user(user_buffer, data->buffer + *offset, len) != 0){
         return -EFAULT;
     }
 
-    *position += count;
-    return count;
+    *offset += len;
+    return len;
 }
 
-// WIP, still not sure about this one.
+// write
+ssize_t ipsr_write (struct file * file, const char __user *userBuffer, size_t size, loff_t *offset){
+    printk(KERN_NOTICE "uhf_transposer: device file is being written at offset %i, written bytes count = %u\n", (int)*offset, (unsigned int) size);
+
+    struct uhf_device_data *data = (struct uhf_device_data*) file->private_data;
+    
+    ssize_t len = min(data->size - *offset, size);
+
+    if (len <= 0){
+        return 0;
+    }
+
+    if(copy_from_user(data->buffer + *offset, userBuffer, len)){
+        return -EFAULT;
+    }
+
+    *offset += len;
+    return len;
+}
+
+// flush
+int ipsr_flush (struct file *, fl_owner_t id){
+
+}
+
+// open
+// Initializes a device.
 static int ipsr_open (struct inode *inode, struct file *file){
     struct uhf_device_data *data;
     data = container_of(inode->i_cdev, struct uhf_device_data, cdev);
+    
+    // Validate access
     file->private_data = data;
+
+    /* initialize the device */
+
+    return 0;
+}
+
+// release
+int ipsr_release (struct inode *, struct file *){
+
 }

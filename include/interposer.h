@@ -68,7 +68,17 @@ values."
 // Copies from kernel buffer to buffer in the user space.
 // long copy_to_user(void __user *to, const void * from, unsigned long n)
 //                  ptr to buffer   ptr to data source  number of bytes to copy
-ssize_t device_file_read(struct file *filep, char *buffer, size_t len, loff_t *offset);
+ssize_t ipsr_read(struct file *file, char __user *userBuffer, size_t size, loff_t *offset);
 
-// WIP, still not sure about this one.
+// write
+ssize_t ipsr_write(struct file *file, const char __user *userBuffer, size_t size, loff_t *offset);
+
+// open
+// Initializes a device.
 static int ipsr_open (struct inode *inode, struct file *file);
+
+// flush
+int ipsr_flush (struct file *, fl_owner_t id);
+
+// release
+int ipsr_release (struct inode *, struct file *);
